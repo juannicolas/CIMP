@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ItemCategories>
+	<category>
+		<id>0</id>
+		<name>Material</name>
+	</category>
+	<category>
+		<id>1</id>
+		<name>Labor</name>
+	</category>
+	<category>
+		<id>2</id>
+		<name>Other</name>
+	</category>
+</ItemCategories>

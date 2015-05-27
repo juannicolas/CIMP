@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Teams>
+	<team>
+		<id>1</id>
+		<name><![CDATA[#1.  Switching]]></name>
+		<description><![CDATA[Including NRC, Transport, Field Operations, SS7, 911]]></description>
+	</team>
+	<team>
+		<id>2</id>
+		<name><![CDATA[#2.  NP&E Layer 0-4]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>3</id>
+		<name><![CDATA[#3.  Field Engineering Cable Records]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>4</id>
+		<name><![CDATA[#4.  Construction Fiber Placement / Splicing]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>5</id>
+		<name><![CDATA[#5.  Node/Mux Turn Ups]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>6</id>
+		<name><![CDATA[#6.  Data Center]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>7</id>
+		<name><![CDATA[#7.  Ops Field Engineering]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>8</id>
+		<name><![CDATA[#8.  Facilities Maintenance]]></name>
+		<description><![CDATA[A/C/HVAC/Generators, Power Insp]]></description>
+	</team>
+	<team>
+		<id>9</id>
+		<name><![CDATA[#9.  Site, Lease Build Implementation]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>10</id>
+		<name><![CDATA[#10.  Network Provisioning]]></name>
+		<description><![CDATA[(Nodes only) Non Local Services Including DLRs, Word Documents]]></description>
+	</team>
+	<team>
+		<id>11</id>
+		<name><![CDATA[#11.  Process Flow Provisioning]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>12</id>
+		<name><![CDATA[#12.  Process Flow Maintenance]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>13</id>
+		<name><![CDATA[#13.  Material Ordering Flows]]></name>
+		<description><![CDATA[Systems (OSPCM, OPEP)]]></description>
+	</team>
+	<team>
+		<id>14</id>
+		<name><![CDATA[#14.  Data Team]]></name>
+		<description><![CDATA[IP Internet]]></description>
+	</team>
+	<team>
+		<id>15</id>
+		<name><![CDATA[#15.  Capital Budget Team]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+	<team>
+		<id>16</id>
+		<name><![CDATA[#16.  Open Budget Team]]></name>
+		<description><![CDATA[]]></description>
+	</team>
+</Teams>

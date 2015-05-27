@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Teams>
+	<team>
+		<id>1</id>
+		<teamarea><![CDATA[Switching including NRC<br>Transport<br>Field Operations<br>SS7<br>911]]></teamarea>
+		<leads><![CDATA[Bob Crawford (787) 643-102<br>Jorge Ocasio (787) 717-8401]]></leads>
+		<sme><![CDATA[<b>Dan Reardon (770) 601-2345</b><br>John Howle (214) 502-3567<br>Pedro Serrano (787) 462-8350<br>Charla Oja-Silva (770) 785-3000<br>Mike Lynch (858) 866-1724<br>Gregg Hammonds (908) 234-3359<br>Diane Krygowski (908) 234-3153<br>David Anderson (908) 234-3126<br>Robert Okamuro (908) 234-4446<br>Teresita Hipolito (908) 234-3055]]></sme>
+	</team>
+	<team>
+		<id>2</id>
+		<teamarea><![CDATA[NP&E Layer 0-4]]></teamarea>
+		<leads><![CDATA[Nicole Rodriguez (787) 717-2085<br>Juan Medero(787) 635-2560]]></leads>
+		<sme><![CDATA[Alan Klossen (210) 246-8330<br><b>Mary Cerniglia (925) 823-4280</b>]]></sme>
+	</team>
+	<team>
+		<id>3</id>
+		<teamarea><![CDATA[Field Engineering Cable Records]]></teamarea>
+		<leads><![CDATA[Jorge Davila (787) 717-8015<br>Juan Medero (787) 635-2560<br>Ignacio Angulo (787) 717-6200]]></leads>
+		<sme><![CDATA[Paula Yonnotti-Ansel (614) 223-8661<br><b>Mike Parks (775) 333-3921</b>]]></sme>
+	</team>
+	<team>
+		<id>4</id>
+		<teamarea><![CDATA[Construction Fiber Placement/Splicing]]></teamarea>
+		<leads><![CDATA[Jose Santos (787) 638-0151<br>Ignacio Angulo (787) 717-6200]]></leads>
+		<sme><![CDATA[<b>Bernie Macias (305) 222-8200</b><br>Kevin Cummings (770) 330-7199]]></sme>
+	</team>
+	<team>
+		<id>5</id>
+		<teamarea><![CDATA[Node/MyxTurn Ups]]></teamarea>
+		<leads><![CDATA[Jose Arias (787) 608-0713<br>Francisco Rodriguez (787) 717-0269]]></leads>
+		<sme><![CDATA[Dave Cundiff (404) 201-0000<br><b>Jamie Lucas (901) 766-6642</b><br>Shawn Egelsky (828) 258-7143<br>Kevin Hall (336) 607-3200]]></sme>
+	</team>
+	<team>
+		<id>6</id>
+		<teamarea><![CDATA[Data Center]]></teamarea>
+		<leads><![CDATA[Jorge Ocasio (787) 717-8401<br>Bob Crawford (787) 643-1020]]></leads>
+		<sme><![CDATA[<b>Craig Klein (210) 246-8233</b><br>Kenneth Clark (336) 333-3352]]></sme>
+	</team>
+	<team>
+		<id>7</id>
+		<teamarea><![CDATA[OSP Field Engineering]]></teamarea>
+		<leads><![CDATA[Jose Santos (787) 638-0151<br>Ignacio Angulo (787) 717-6200]]></leads>
+		<sme><![CDATA[<b>Bernie Macias (305) 336-4488</b>]]></sme>
+	</team>
+	<team>
+		<id>8</id>
+		<teamarea><![CDATA[Facilities maintenance(A/C/HVAC/Generators, Power Insp)]]></teamarea>
+		<leads><![CDATA[Jose Arias (787) 608-0713]]></leads>
+		<sme><![CDATA[John Lopez (678) 893-3933<br><b>Jamie Lucas (901) 766-6642</b><br>Lynetta Baldwin (205) 972-8802<br>Cherise Mlot (404) 986-0353<br>Mary Beth McCormick (407) 771-1621<br>Tom Schaible (908) 234-8885<br>Lynetta Baldwin (205) 972-8802<br>Shawn Egelsky (828) 258-7143<br>Kevin Hall (336) 607-3200]]></sme>
+	</team>
+	<team>
+		<id>9</id>
+		<teamarea><![CDATA[Site<br>Lease build Implementation]]></teamarea>
+		<leads><![CDATA[Carlos Hernandez (787) 717-9966]]></leads>
+		<sme><![CDATA[<b>Michelle Tharp (404) 499-6534</b>]]></sme>
+	</team>
+	<team>
+		<id>10</id>
+		<teamarea><![CDATA[Network Provisioning(nodes only) Non Local Services Incluiding DLRs<br>Word Documents]]></teamarea>
+		<leads><![CDATA[Juan Medero (787) 635-2560]]></leads>
+		<sme><![CDATA[Steve Longest (317) 997-8024<br>John Manosky (248) 948-0315<br>Susan John (908) 234-7524<br>Rich Hodes (732) 420-6055<br><b>Debbie Knecht (502) 241-5809</b>]]></sme>
+	</team>
+	<team>
+		<id>11</id>
+		<teamarea><![CDATA[Process Flow Provisioning]]></teamarea>
+		<leads><![CDATA[Dedma Rivera (787) 717-1117<br>Bob Crawford (787) 643-1020<br>Juan Medero (787) 635-2560<br>Francisco Rodriguez (787) 717-8006]]></leads>
+		<sme><![CDATA[Multi Organization Staff Reps]]></sme>
+	</team>
+	<team>
+		<id>12</id>
+		<teamarea><![CDATA[Process Flow Maintenances]]></teamarea>
+		<leads><![CDATA[Dedma Rivera (787) 717-1117<br>Bob Crawford (787) 643-1020]]></leads>
+		<sme><![CDATA[Multi Organization Staff rep]]></sme>
+	</team>
+	<team>
+		<id>13</id>
+		<teamarea><![CDATA[Material Ordering Flows/Systems (OSPCM,OPEP)]]></teamarea>
+		<leads><![CDATA[Juan Medero (787) 635-2560<br>Jose Santos (787) 638-0151]]></leads>
+		<sme><![CDATA[Robert Crib (404) 229-9632]]></sme>
+	</team>
+	<team>
+		<id>14</id>
+		<teamarea><![CDATA[Data (IP Internet) Team]]></teamarea>
+		<leads><![CDATA[Juan Medero (787) 635-2560]]></leads>
+		<sme><![CDATA[Mike Paradise (630) 289-1128<br>Lori J. Andrew (404) 499-5110]]></sme>
+	</team>
+	<team>
+		<id>15</id>
+		<teamarea><![CDATA[Capital Budget Team]]></teamarea>
+		<leads></leads>
+		<sme><![CDATA[Emory King (404) 499-3581<br>Stacy Marino (678) 893-1490]]></sme>
+	</team>
+	<team>
+		<id>16</id>
+		<teamarea><![CDATA[Open Budget Team]]></teamarea>
+		<leads></leads>
+		<sme><![CDATA[Alexander Vega (787) 397-5181]]></sme>
+	</team>
+</Teams>

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="370" creationComplete="init();">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import flash.net.FileReference;
+			
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import mx.rpc.http.HTTPService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.events.CloseEvent;
+			
+			private var fileRefUp:FileReference;
+			private var DOMAIN_URL:String;
+			private var FILE_UPLOAD_URL:String;
+			
+			private function init():void {
+				fileRefUp = new FileReference();
+				fileRefUp.addEventListener(Event.SELECT, fileRef_select);
+				fileRefUp.addEventListener(ProgressEvent.PROGRESS, fileRef_progress);
+				fileRefUp.addEventListener("uploadCompleteData", fileRef_complete);
+				DOMAIN_URL = root.loaderInfo.url.toString();
+				DOMAIN_URL = DOMAIN_URL.substring(0,DOMAIN_URL.length - 8)
+				// remove cimp.swf and add cgi-bin/uploader.cgi
+				FILE_UPLOAD_URL = DOMAIN_URL + "cgi-bin/uploader.cgi";
+			}
+			
+			private function browse():void {
+				fileRefUp.browse();
+				fileTxt.text = "";
+				uploadBtn.enabled = false;
+			}
+			
+			private function fileRef_select(evt:Event):void {
+				var sizeInKB:Number = fileRefUp.size / 1024;
+				fileTxt.text = fileRefUp.name + " (" + numberFormatter.format(sizeInKB) + " KB)";
+				uploadBtn.enabled = true;
+			}
+			
+			private function fileRef_upload():void {
+				try {
+					var params:URLVariables = new URLVariables();
+					params.initId = parentDocument.initXML.initiative.id;
+					params.owner = parentDocument.usernameTxt.text;
+					var request:URLRequest = new URLRequest(FILE_UPLOAD_URL);
+					request.method = URLRequestMethod.POST;
+					request.data = params;
+					fileRefUp.upload(request);
+				} catch (err:Error) {
+					Alert.show("ERROR: " + err.message);
+					progressBar.visible = false;
+				}
+
+			}
+			
+			private function fileRef_download():void {
+				var fileRefDown:FileReference = new FileReference();
+				var url:String = DOMAIN_URL + "files/Attachments/" + filesGrid.selectedItem.filename;
+				var request:URLRequest = new URLRequest(url);
+				fileRefDown.download(request);
+			}
+			
+			private function fileRef_progress(evt:ProgressEvent):void {
+				progressBar.visible = true;
+			}
+			
+			private function fileRef_complete(evt:Event):void {
+				var sizeInKB:Number = fileRefUp.size / 1024;
+				var fileName:String = parentDocument.initXML.initiative.id +"-"+ parentDocument.usernameTxt.text +"-"+fileRefUp.name;
+				var xm:XML = new XML();
+				xm = <attachment></attachment>
+				var xmlList:XMLList = XMLList("<filename>"+fileName+"</filename><size>"+sizeInKB+" KB</size>");
+				xm.appendChild(xmlList);
+				try{
+					if(filesGrid.dataProvider != null) {filesGrid.dataProvider.addItem(xm);}
+					else {filesGrid.dataProvider = xm; parentDocument.attachXMLList = filesGrid.dataProvider;}
+				}
+				catch (e:Error){Alert.show(e.message);}
+				Alert.show("Upload Completed");
+				fileTxt.text = "";
+				uploadBtn.enabled = false;
+				progressBar.visible = false;
+				enableBtns(false);
+			}
+			
+			public function actionPrompt(title:String, action:String):void 
+			{
+				Alert.show("Are you sure you wish to " + action + "?", title,Alert.OK | Alert.CANCEL, this, function (e:CloseEvent):void {actionListener(e, action)}, null, Alert.OK);
+			}
+			
+			private function actionListener(eventObj:CloseEvent, action:String):void 
+			{
+				if (eventObj.detail==Alert.OK) {
+					if(action == "delete this attachment") {deleteFile();}
+				}
+			}
+			
+			public function deleteFile():void {
+				var service:HTTPService = new HTTPService();
+				var parameters:Object = new Object();
+				parameters["filename"] = filesGrid.selectedItem.filename;
+				service.url = "cgi-bin/deleteFile.cgi";
+				service.resultFormat = "e4x";
+				service.addEventListener("result", delResult);
+				service.method = "POST";
+				service.useProxy = false;
+				service.addEventListener("fault", httpFault);
+				service.send(parameters); 
+			}
+			
+			private function delResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.success == true) 
+				{
+					filesGrid.dataProvider.removeItemAt(filesGrid.selectedIndex);
+					parentDocument.attachXMLList = filesGrid.dataProvider;
+					enableBtns(false);
+					Alert.show("File was removed from server","Deleted");
+					
+				}
+				else {Alert.show(resultXML.errmsg,"Error");}
+			}
+			
+			private function httpFault(event:FaultEvent):void {
+				var faultstring:String = event.fault.faultString;
+				Alert.show(faultstring);
+			}
+			
+			private function enableBtns(value:Boolean):void{
+				downloadBtn.enabled = value;
+				deleteBtn.enabled = value
+			}
+
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:NumberFormatter id="numberFormatter" />
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="600" height="370" chromeColor="#EB871B" title="Attached Files" close="closeWindows(event);">
+		<mx:DataGrid y="10" height="181" right="10" left="10" id="filesGrid" doubleClickEnabled="true" itemDoubleClick="fileRef_download();" itemClick="enableBtns(true)" itemFocusOut="enableBtns(false)" dataProvider="{parentDocument.attachXMLList}">
+			<mx:columns>
+				<mx:DataGridColumn headerText="File Name" dataField="filename"/>
+				<mx:DataGridColumn headerText="Size" dataField="size"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Button x="10" y="199" label="Download" id="downloadBtn" click="fileRef_download();" enabled="false"/>
+		<s:Button x="518" y="199" label="Delete" id="deleteBtn" enabled="false" click="actionPrompt('Delete','delete this attachment')"/>
+		<s:Label x="11" y="258" text="File:"/>
+		<s:TextInput x="36" y="253" width="189" id="fileTxt" editable="false"/>
+		<s:Button x="233" y="254" label="Browse" id="browseBtn" click="browse();"/>
+		<s:Button x="311" y="254" label="Upload" click="fileRef_upload();" id="uploadBtn" enabled="false"/>
+		<s:Button label="Close" click="closeWindows(event);" bottom="10" horizontalCenter="252"/>
+		<mx:HRule width="581" horizontalCenter="0" bottom="40"/>
+		<mx:HRule width="573" horizontalCenter="1" bottom="105"/>
+		<mx:ProgressBar x="417" y="245" height="33" width="171" indeterminate="true" visible="false" id="progressBar" label="Uploading"/>
+	</s:TitleWindow>
+</s:Application>

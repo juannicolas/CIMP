@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Initiatives>
+	<initiative>
+		<id></id>
+		<team></team>
+		<description></description>
+		<expense>$0.00</expense>
+		<expDesc></expDesc>
+		<capital>$0.00</capital>
+		<capDesc></capDesc>
+		<dependNotes></dependNotes>
+		<benefits></benefits>
+		<owner></owner>
+		<canModify>true</canModify>
+	</initiative>
+	<summary>
+	</summary>
+</Initiatives>

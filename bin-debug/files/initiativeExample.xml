@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Initiatives>
+	<initiative>
+		<id>0</id>
+		<team>0</team>
+		<description><![CDATA[Including NRC, Transport, Field Operations, SS7, 911]]></description>
+		<expense>$0.00</expense>
+		<expDesc><![CDATA[Costs]]></expDesc>
+		<capital>$60,000.00</capital>
+		<capDesc><![CDATA[Costs]]></capDesc>
+		<dependNotes></dependNotes>
+		<benefits></benefits>
+		<owner>lm768y</owner>
+		<canModify>true</canModify>
+	</initiative>
+	<expItem>
+		<catId></catId>
+		<category></category>
+		<description></description>
+		<qty></qty>
+		<itemPrice></itemPrice>
+		<totalPrice></totalPrice>
+		<fromDate></fromDate>
+		<toDate></toDate>
+	</expItem>
+	<capItem>
+		<catId>1</catId>
+		<category>Labor</category>
+		<description>Tech III</description>
+		<qty>2</qty>
+		<itemPrice>30,000</itemPrice>
+		<totalPrice>60,000</totalPrice>
+		<fromDate>4/1/2010</fromDate>
+		<toDate>5/1/2010</toDate>
+	</capItem>
+	<timeFrame>
+		<phase>1</phase>
+		<value>2 Months</value>
+	</timeFrame>
+	<timeFrame>
+		<phase>2</phase>
+		<value>4 Months</value>
+	</timeFrame>
+	<dependency>
+		<id>3</id>
+		<description>Design</description>
+	</dependency>
+	<contact>
+		<name>John Smith</name>
+		<telephone>7877777777</telephone>
+		<organization>NOC</organization>
+	</contact>
+	<summary>
+		<Budget_Type>Expense</Budget_Type>
+		<Jan10>$1,000</Jan10>
+		<Feb10>$2,000</Feb10>
+		<Mar10></Mar10>
+		<Apr10></Apr10>
+	</summary>
+	<summary>
+		<Budget_Type>Capital</Budget_Type>
+		<Jan10></Jan10>
+		<Feb10></Feb10>
+		<Mar10>$4,000</Mar10>
+		<Apr10>$6,000</Apr10>
+	</summary>
+	<attachment>
+		<id></id>
+		<filename></filename>
+		<size></size>
+	</attachment>
+</Initiatives>

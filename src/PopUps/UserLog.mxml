@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="370">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Script>
+		<![CDATA[
+			import mx.managers.PopUpManager;
+			import mx.validators.*;
+			import mx.controls.Alert;
+			import mx.events.ValidationResultEvent;
+			
+			private function saveLog():void{
+				var validData:Boolean = validateInput();
+				if (validData == true) {
+					var params:Object = new Object();
+					params["id"] = logIdTxt.text;
+					params["initId"] = initIdTxt.text
+					params["team"] = teamsList.selectedIndex;
+					params["log"] = richTextbx.htmlText;
+					params["owner"] = ownerTxt.text;
+					params["user"] = parentDocument.usernameTxt.text;
+					params["sInitId"] = parentDocument.logsInitIdTxt.text;
+					if(parentDocument.logsTeamList.selectedIndex > -1) {params["sTeam"] = parentDocument.logsTeamList.selectedItem.id;}
+					if(parentDocument.logsOwnerList.selectedIndex > -1) {params["sOwner"] = parentDocument.logsOwnerList.selectedItem.username};
+					params["fromDate"] = parentDocument.logsFromDate.text;
+					params["toDate"] = parentDocument.logsToDate.text;
+					
+					if(saveBtn.label == "Add") {parentDocument.useHttpService(params,"logAdd");}
+					else{parentDocument.useHttpService(params,"logSave");}
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+	
+				strV.listener=richTextbx;
+				vResult = strV.validate(richTextbx.text);
+				if(vResult.type == "invalid") {Alert.show("Data input error, please verify entries in red"); return false;}
+				else {return true;}
+			}
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:StringValidator id="strV" required="true"/>
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="600" height="405" chromeColor="#EB871B" title="User Log" id="userLogPopUp" close="closeWindows(event)">
+		<mx:RichTextEditor height="264" dropShadowVisible="false" right="5" left="5" y="62" id="richTextbx">
+			
+		</mx:RichTextEditor>
+		<s:Button label="Save" horizontalCenter="-37" bottom="10" id="saveBtn" click="saveLog()"/>
+		<s:Button label="Close" click="closeWindows(event);" bottom="10" horizontalCenter="36" id="closeBtn"/>
+		<mx:HRule width="581" horizontalCenter="0" bottom="40"/>
+		<s:TextInput x="263" y="5" editable="false" enabled="false" id="dateTxt"/>
+		<s:TextInput x="458" y="6" editable="false" enabled="false" id="ownerTxt"/>
+		<s:Label x="225" y="10" text="Date:" width="65" height="20"/>
+		<s:Label x="411" y="11" text="Owner:"/>
+		<s:TextInput x="81" y="5" id="initIdTxt"/>
+		<s:Label x="10" y="10" text="Initiative ID:"/>
+		<s:Label x="37" y="40" text="Team:"/>
+		<s:DropDownList x="81" y="33" width="310" dataProvider="{parentDocument.teamsXMLList}" labelField="name" id="teamsList" selectedIndex="0"></s:DropDownList>
+		<s:TextInput x="460" y="36" id="logIdTxt" visible="false"/>
+			
+	</s:TitleWindow>
+</s:Application>

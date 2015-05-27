@@ -1,0 +1,978 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:local="PopUps.*" creationComplete="init();" currentState="Login" pageTitle="ACITP" width="100%" height="100%" minHeight="600" minWidth="800" >
+	<s:states>
+		<s:State name="Login"/>
+		<s:State name="IntegrationForms" exitState="actionPrompt('Exit Form', 'exit form; you may lose any progress')" />
+		<s:State name="Home"/>
+		<s:State name="CriticalItems"/>
+		<s:State name="SummaryReports"/>
+		<s:State name="Logs"/>
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			import PopUps.*;
+			
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.external.ExternalInterface;
+			
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.controls.DateField;
+			import mx.controls.List;
+			import mx.controls.Menu;
+			import mx.controls.PopUpButton;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ListEvent;
+			import mx.events.MenuEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.managers.CursorManager;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.http.HTTPService;
+			import mx.utils.ObjectUtil;
+			import mx.validators.*;
+			
+			private var service:HTTPService;
+			
+			private function init():void
+			{
+				getXML();
+				ExternalInterface.call('function browserFocus(){document.getElementById(\'cimp\').focus();}'); 
+				usernameTxt.setFocus();
+			} 
+			
+			private function getXML():void
+			{
+				var teamsLoader:URLLoader = new URLLoader();
+				var usersLoader:URLLoader = new URLLoader();
+				var catLoader:URLLoader = new URLLoader();
+				var homeLoader:URLLoader = new URLLoader();
+				teamsLoader.addEventListener(Event.COMPLETE, function ():void {teamsXML = new XML(teamsLoader.data); teamsXMLList = new XMLListCollection(teamsXML.team);});
+				usersLoader.addEventListener(Event.COMPLETE, function ():void {usersXML = new XML(usersLoader.data); usersXMLList = new XMLListCollection(usersXML.user);});
+				catLoader.addEventListener(Event.COMPLETE, function ():void {itemCatXML = new XML(catLoader.data); itemCatXMLList = new XMLListCollection(itemCatXML.category);});
+				homeLoader.addEventListener(Event.COMPLETE, function ():void {teamContactsXML = new XML(homeLoader.data); TCCXMLList = new XMLListCollection(teamContactsXML.team);});
+				
+				teamsLoader.load(new URLRequest("files/teams.xml?nocache=" + getTimer()));	
+				usersLoader.load(new URLRequest("files/users.xml?nocache=" + getTimer()));
+				catLoader.load(new URLRequest("files/itemsCat.xml?nocache=" + getTimer()));	
+				homeLoader.load(new URLRequest("files/teamAndContacts.xml?nocache=" + getTimer()));	
+			}
+			
+			private function procInit(action:String):void{
+				var validData:Boolean;
+				if(action == "Delete") {validData = true;}
+				else {validData = validateInput();}
+				if (validData == true) {
+					useHttpService(getParams(),action)
+				}
+			}
+			
+			public function useHttpService(parameters:Object, action:String):void {
+				service = new HTTPService();
+				CursorManager.setBusyCursor();
+				if(action == "login") 
+				{
+					service.url = "cgi-bin/login.cgi";
+					service.addEventListener("result", logInResult);
+				}
+				else if(action == "getAll" || action == "view")
+				{
+					parameters["action"] = action;
+					service.url = "cgi-bin/search.cgi";
+					service.resultFormat = "e4x";
+					service.addEventListener("result", searchResult);
+				}
+				else if(action == "getCritical") 
+				{
+					service.url = "cgi-bin/getCritical.cgi";
+					service.resultFormat = "e4x";
+					service.addEventListener("result", criticalResult);
+				}
+				else if(action == "getSummary") 
+				{
+					service.url = "cgi-bin/getSummary.cgi";
+					service.resultFormat = "e4x";
+					service.addEventListener("result", summaryResult);
+				}
+				else if(action == "logAdd" || action == "logSave" || action == "logDel" || action == "logSearch") 
+				{
+					parameters["action"] = action;
+					service.url = "cgi-bin/procLog.cgi";
+					service.resultFormat = "e4x";
+					service.addEventListener("result", logResult);
+				}
+				else
+				{
+					parameters["action"] = action;
+					service.url = "cgi-bin/procInit.cgi";
+					service.resultFormat = "e4x";
+					service.addEventListener("result", procResult);
+				}
+				service.method = "POST";
+				service.useProxy = false;
+				service.addEventListener("fault", httpFault);
+				service.send(parameters); 
+			}
+			
+			private function logInResult(event:ResultEvent):void {
+				if(event.result == true) 
+				{
+					passwdTxt.text = "";
+					currentState='Home';
+				}
+				else {Alert.show("Check Username and password","Login Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function procResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.procResult.value == true) 
+				{
+					initXML = resultXML;
+					timeFrameXMLList = new XMLListCollection(initXML.timeFrame);
+					dependinitXMLList = new XMLListCollection(initXML.dependency);
+					contactXMLList = new XMLListCollection(initXML.contact);
+					expXMLList = new XMLListCollection(initXML.expItem);
+					capXMLList = new XMLListCollection(initXML.capItem);
+					if(resultXML.procResult.prevAction == "Add"){saveBtn.label = "Save"; deleteBtn.enabled = true; attachmentImg.enabled = true; calcSummary(); Alert.show("Initiative #"+initXML.initiative.id+" was added successfully","Results");}
+					else if(resultXML.procResult.prevAction == "Save"){calcSummary(); Alert.show("Changes to Initiative #"+initXML.initiative.id+" were saved successfully","Results");}
+					else if(resultXML.procResult.prevAction == "Delete"){saveBtn.label = "Add"; deleteBtn.enabled = false; clearForm(); Alert.show("Initiative was deleted successfully","Results");}
+				}
+				else {Alert.show(resultXML.error.msg,"Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function searchResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.procResult.value == true) 
+				{
+					if(resultXML.procResult.prevAction == "getAll") {searchXMLList = new XMLListCollection(resultXML.initiative);}
+					else if(resultXML.procResult.prevAction == "view") {
+						initXML = resultXML;
+						timeFrameXMLList = new XMLListCollection(resultXML.timeFrame);
+						dependinitXMLList = new XMLListCollection(resultXML.dependency);
+						contactXMLList = new XMLListCollection(resultXML.contact);
+						expXMLList = new XMLListCollection(resultXML.expItem);
+						capXMLList = new XMLListCollection(resultXML.capItem);
+						attachXMLList = new XMLListCollection(resultXML.attachment);
+						calcSummary();
+						saveBtn.label = "Save";
+						if(resultXML.initiative.canModify == true) {disableBtns(true);}
+						else{disableBtns(false);}
+					}
+				}
+				else {Alert.show(resultXML.error.msg,"Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function criticalResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.success == true) 
+				{
+					criticalXMLList = new XMLListCollection(resultXML.criticalItem);
+				}
+				else {Alert.show(resultXML.error.msg,"Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function summaryResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.success == true) 
+				{
+					sumGridXMLList = new XMLListCollection(resultXML.initiative);
+					sumGraphXMLList = new XMLListCollection(resultXML.summItem);
+					totalInitsTxt.text = resultXML.total;
+				}
+				else {Alert.show(resultXML.error.msg,"Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function logResult(event:ResultEvent):void {
+				var resultXML:XML = event.result as XML;
+				if(resultXML.success == true) 
+				{
+					logXMLList = new XMLListCollection(resultXML.log);
+				}
+				else {Alert.show(resultXML.error.msg,"Error");}
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function disableBtns(action:Boolean):void{
+				saveBtn.enabled = action;
+				deleteBtn.enabled = action;
+				attachmentImg.enabled = action;
+			}
+			
+			private function httpFault(event:FaultEvent):void {
+				var faultstring:String = event.fault.faultString;
+				Alert.show(faultstring);
+				CursorManager.removeBusyCursor();
+			}
+			
+			private function showMenu():void {
+				var myMenu:Menu = Menu.createMenu(null, xmlMenu, false);
+				myMenu.labelField="@label";
+				myMenu.addEventListener("itemClick", changeHandler);
+				myMenu.show(popUpMenuBtn.x, popUpMenuBtn.y + 21);
+				//myMenu.show(popUpMenuBtn.x, popUpMenuBtn.y + 37); if Control bar is activated
+			}
+			
+			private function changeHandler(event:MenuEvent):void {      
+				event.currentTarget.hide();
+				currentState='IntegrationForms';
+				saveBtn.label = "Add";
+				deleteBtn.enabled = false;
+				if (event.label == "View Initiatives") {
+					showSearch('Search');
+					if (initIdTxt.text != "") {
+						saveBtn.label = "Save"; 
+						deleteBtn.enabled = true; 
+						attachmentImg.enabled = true;
+					}
+				}
+				else {clearForm();} //For not loosing progress, just in case user dont save before Searching, they can close search window and keep working
+			}
+			
+			public function actionPrompt(title:String, action:String):void 
+			{
+					Alert.show("Are you sure you wish to " + action + "?", title,Alert.OK | Alert.CANCEL, this, function (e:CloseEvent):void {actionListener(e, action)}, null, Alert.OK);
+			}
+			
+			private function actionListener(eventObj:CloseEvent, action:String):void 
+			{
+				if (eventObj.detail==Alert.OK) {
+					if(action == "logout") {currentState='Login'; CursorManager.removeBusyCursor();}
+					else if (action == 'delete time frame') {
+						if(timeFrameGrid.selectedIndex >= 0) {timeFrameGrid.dataProvider.removeItemAt(timeFrameGrid.selectedIndex);}
+						else {Alert.show("No record selected for deletion.");}
+					}
+					else if (action == 'delete contact') {
+						if(contactsGrid.selectedIndex >= 0) {contactsGrid.dataProvider.removeItemAt(contactsGrid.selectedIndex);}
+						else {Alert.show("No record selected for deletion.");}
+					}
+					else if (action == 'delete dependency') {
+						if(dependGrid.selectedIndex >= 0) {dependGrid.dataProvider.removeItemAt(dependGrid.selectedIndex);}
+						else {Alert.show("No record selected for deletion.");}
+					}
+					else if (action == 'delete Initiative') {
+						procInit('Delete');
+					}
+					else if (action == 'delete log entry') {
+						if(logsGrid.selectedIndex >= 0) {
+							if(logsGrid.selectedItem.canModify == "true") {
+								var params:Object = new Object();
+								params["user"] = usernameTxt.text;
+								params["id"] = logsGrid.selectedItem.id;
+								useHttpService(params, "logDel");
+							}
+							else {Alert.show("You do not have permission to delete this log entry.","Delete Error");}
+						}
+						else {Alert.show("No record selected for deletion.");}
+					}
+				}
+				else {
+					if (action == 'exit form; you may lose any progress') {currentState = 'IntegrationForms';}
+				}
+			}
+			
+			public var expCap:ExpenseCapital;
+			private function showExpCap(label:String):void 
+			{
+				expCap = ExpenseCapital(PopUpManager.createPopUp( this, ExpenseCapital , true));  
+				PopUpManager.centerPopUp(expCap);
+				expCap.expCapWindow.title = label;
+				expCap.initIdTxt.text = initIdTxt.text;
+				if (label == "Expense") {
+					expCap.descTxt.text = initXML.initiative.expDesc;
+					if(expXMLList.length >= 1) {expCap.itemsGrid.dataProvider = expXMLList.copy();}
+					expCap.totalTxt.text = expenseTxt.text;
+				}
+				else {
+					expCap.descTxt.text = initXML.initiative.capDesc;
+					if(capXMLList.length >= 1) {expCap.itemsGrid.dataProvider = capXMLList.copy();}
+					expCap.totalTxt.text = capitalTxt.text;
+				}
+			}
+			
+			private function showTFrame(event:Event, btnlbl:String):void 
+			{
+				var timeFrame:TimeFrame=TimeFrame(PopUpManager.createPopUp( this, TimeFrame , true));  
+				PopUpManager.centerPopUp(timeFrame);
+				timeFrame.saveBtn.label = btnlbl;
+				var phaseNum:Number = timeFrameGrid.dataProvider.length + 1;
+				if (btnlbl == "Save") {
+					var value:String = event.currentTarget.selectedItem.value;
+					var values:Array = value.split(" ");
+					timeFrame.phaseTxt.text = event.currentTarget.selectedItem.phase;
+					timeFrame.valueTxt.text = values[0];
+					if (values[1] == "Days") {
+						timeFrame.typeCmbBox.selectedIndex = 0;
+					}
+					else if (values[1] == "Weeks") {
+						timeFrame.typeCmbBox.selectedIndex = 1;
+					}
+					else if (values[1] == "Months") {
+						timeFrame.typeCmbBox.selectedIndex = 2;
+					}
+					else if (values[1] == "Years") {
+						timeFrame.typeCmbBox.selectedIndex = 3;
+					}
+				}
+				else {timeFrame.phaseTxt.text = phaseNum.toString();}
+			}
+			
+			private function showKContacts(event:Event, btnlbl:String):void 
+			{
+				var keyContacts:KeyContacts=KeyContacts(PopUpManager.createPopUp( this, KeyContacts , true));  
+				PopUpManager.centerPopUp(keyContacts);
+				keyContacts.saveBtn.label = btnlbl;
+				if (btnlbl == "Save") {
+					keyContacts.nameTxt.text = event.currentTarget.selectedItem.name;
+					keyContacts.telNumTxt.text = event.currentTarget.selectedItem.telephone;
+					keyContacts.orgTxt.text = event.currentTarget.selectedItem.organization;
+				}
+			}
+			private function showSearch(title:String):void 
+			{
+				var params:Object = new Object();
+				//params["initId"] = initXML.initiative.id;
+				//params["team"] = initXML.initiative.team;
+				//params["owner"] = usernameTxt.text;
+				params["user"] = usernameTxt.text;
+				useHttpService(params,"getAll");
+				var search:Search=Search(PopUpManager.createPopUp( this, Search , true));  
+				PopUpManager.centerPopUp(search);
+				search.searchWindow.title = title;
+				search.teamList.dataProvider = teamsXMLList;
+				//if(initXML.length() > 0) {search.teamList.selectedIndex = initXML.initiative.team;}
+				search.ownerList.dataProvider = usersXMLList;
+			}
+			
+			private function showAttachments():void 
+			{
+				var attachedFiles:AttachedFiles=AttachedFiles(PopUpManager.createPopUp( this, AttachedFiles , true));  
+				PopUpManager.centerPopUp(attachedFiles);
+			}
+			
+			private function showLogEntry(btnlbl:String):void 
+			{
+				var userLog:UserLog=UserLog(PopUpManager.createPopUp( this, UserLog , true));  
+				PopUpManager.centerPopUp(userLog);
+				userLog.saveBtn.label = btnlbl;
+				if(btnlbl == 'Save') {
+					userLog.logIdTxt.text = logsGrid.selectedItem.id;
+					userLog.initIdTxt.text = logsGrid.selectedItem.initId;
+					userLog.dateTxt.text = logsGrid.selectedItem.date;
+					userLog.ownerTxt.text = logsGrid.selectedItem.owner;
+					userLog.teamsList.selectedIndex = logsGrid.selectedItem.team;
+					userLog.richTextbx.htmlText = logsGrid.selectedItem.logNotes;
+					
+					if(logsGrid.selectedItem.canModify == "false") {
+						userLog.initIdTxt.editable=false;
+						userLog.teamsList.enabled=false;
+						userLog.richTextbx.enabled=false;
+						userLog.saveBtn.enabled=false;
+					}
+				}
+				else {
+					userLog.ownerTxt.text = usernameTxt.text;
+					userLog.dateTxt.text = formatDateTime.format(new Date());
+				}
+			}
+			
+			[Bindable] private var summaryXmlList:XMLList = new XMLList();
+			private function summaryXmlLoadComplete():void
+			{
+				try{
+					if(summaryXmlList.length() < 1){summaryXmlList = initXML.summary;}
+					//check to make sure there are results
+					if(summaryXmlList.length() < 1){
+						//Alert.show("There were no results that matched your search criteria");
+						return;
+					}
+					//create array that will become the columns array of the datagrid
+					var dgCols:Array = new Array();
+					//get each child element of the first item in xmlList and put them into an XMLList
+					//each child element will represent a column in the datagrid
+					var xmlColumns:XMLList = summaryXmlList[0].children();
+					
+					for(var x:uint=0; x < xmlColumns.length(); x++){
+						var xml:XML = xmlColumns[x];
+						//create a datagrid column for each xml element
+						var col:DataGridColumn = new DataGridColumn();
+						col.headerText = xml.name();
+						col.dataField = xml.name();
+						//if the text inside an xml element is decoded you can set the labelFunction 
+						//see the function below...
+						col.labelFunction = scrubContent
+						dgCols.push(col);
+					}
+					summaryGrid.columns = dgCols;                            
+					summaryGrid.dataProvider = summaryXmlList;
+					
+				}catch(e:Error){
+					Alert.show(e.message);    
+				}
+			}
+			
+			private function scrubContent(item:Object, col:DataGridColumn):String{
+				var xml:XML = XML(item);
+				var df:String = col.dataField;
+				//you might have to decode the content first
+				//if it is content that was created by a RichTextEditor, you'll also
+				//have to run it through cleanHTML()
+				//found it at http://thanksmister.com/?tag=richtexteditor
+				return cleanHTML(decodeURI(xml.child(df)));
+			}
+			
+			private function cleanHTML(str:String):String
+			{
+				var pattern:RegExp = /<TEXTFORMAT.*?>/g;
+				var str:String = str.replace(pattern, "");
+				pattern = /<FONT.*?>/g;
+				str = str.replace(pattern, "");
+				pattern = /<\/FONT.*?>/g;
+				str = str.replace(pattern, "");
+				pattern = /<P.*?>/g;
+				str = str.replace(pattern, "");
+				pattern = /<\/P.*?>/g;
+				str = str.replace(pattern, "");
+				pattern = /<\/TEXTFORMAT.*?>/g;
+				str = str.replace(pattern, "");
+				
+				return str;
+			}
+			
+			public function calcSummary():void {
+				var regEx:RegExp = /[,$]/g;
+				var expMinDate:Date; var expMaxDate:Date;
+				var capMinDate:Date; var capMaxDate:Date;
+				if(expenseTxt.text.replace(regEx,"") == "0.00" && capitalTxt.text.replace(regEx,"") == "0.00") {
+					summaryXmlList = new XMLList();
+					var dgCols:Array = new Array();
+					summaryGrid.columns = dgCols;                            
+					summaryGrid.dataProvider = summaryXmlList;
+					return;
+				}
+				if(expenseTxt.text.replace(regEx,"") != "0.00" || expenseTxt.text != ""){
+					expMinDate = getMinDate(expXMLList);
+					expMaxDate = getMaxDate(expXMLList);
+				}
+				if(capitalTxt.text.replace(regEx,"") != "0.00" || capitalTxt.text != ""){
+					capMinDate = getMinDate(capXMLList);
+					capMaxDate = getMaxDate(capXMLList);
+				}
+				var minDate:Date;
+				var maxDate:Date;
+				var Months:Object = new Object();
+				var monthLabels:Array = new Array("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+				// Get MIN and MAX date. If Null logic is for null error in .getTime()
+				if(expMinDate == null && capMinDate != null) {minDate = capMinDate;}
+				else if (expMinDate != null && capMinDate == null) {minDate = expMinDate;}
+				if(expMaxDate == null && capMaxDate != null) {maxDate = capMaxDate;}
+				else if (expMaxDate != null && capMaxDate == null) {maxDate = expMaxDate;}
+				if(minDate == null) {
+					if(expMinDate.getTime() < capMinDate.getTime()) {minDate = expMinDate;}
+					else {minDate = capMinDate;}
+				}
+				if(maxDate == null) {
+					if(expMaxDate.getTime() > capMaxDate.getTime()) {maxDate = expMaxDate;}
+					else {maxDate = capMaxDate;}
+				}
+				//Create Associated Array for Months
+				var currDate:Date = minDate;
+				var lastDate:Date = new Date(maxDate.fullYear, maxDate.month + 1, maxDate.date);
+				var currMonth:String = monthLabels[currDate.month] + currDate.fullYear;
+				var lastMonth:String = monthLabels[lastDate.month] + lastDate.fullYear;
+				while(currMonth != lastMonth) {
+					Months[currMonth] = 0;
+					currDate = new Date(currDate.fullYear, currDate.month + 1, currDate.date);
+					currMonth = monthLabels[currDate.month] + currDate.fullYear;
+				}
+				//Calculate monthly price summary
+				var tempXMLList:XMLListCollection;
+				var budgetType:String;
+				var totalBudget:String;
+				var xm:XML = <Initiatives></Initiatives>;
+				for(var x:Number = 0; x <= 1; x++) {
+					if(x == 0) {tempXMLList = expXMLList; budgetType="Expense"; totalBudget=expenseTxt.text;}
+					else {tempXMLList = capXMLList; budgetType="Capital"; totalBudget=capitalTxt.text;}
+					for each (var node:XML in tempXMLList){
+						if(node.fromDate != "" && node.toDate != "") {
+							currDate = DateField.stringToDate(node.fromDate, "MM/DD/YYYY");
+							lastDate = DateField.stringToDate(node.toDate, "MM/DD/YYYY");
+							var totalPrice:String = node.totalPrice;
+							var dayDiff:Number = getDaysDiff(currDate,lastDate);
+							if(dayDiff < 1) {dayDiff = 1;}
+							var dailyTotal:Number = parseFloat(totalPrice.replace(regEx,"")) / dayDiff;
+							if(currDate.time == lastDate.time) {lastDate = new Date(lastDate.fullYear, lastDate.month, lastDate.date + 1);}
+							while(currDate.time < lastDate.time){
+								currMonth = monthLabels[currDate.month] + currDate.fullYear;
+								Months[currMonth] += dailyTotal;
+								currDate = new Date(currDate.fullYear, currDate.month, currDate.date + 1);
+							}
+						}
+					} 
+					//Creat XML and asign to XMLListCollection
+					currDate = minDate;
+					lastDate = new Date(maxDate.fullYear, maxDate.month + 1, maxDate.date);
+					currMonth = monthLabels[currDate.month] + currDate.fullYear;
+					lastMonth = monthLabels[lastDate.month] + lastDate.fullYear;
+					var summaryItem:String = "<summary><Budget_Type>"+budgetType+"</Budget_Type>";
+					while(currMonth != lastMonth) {
+						summaryItem += "<"+currMonth+">"+cFormat.format(Months[currMonth])+"</"+currMonth+">";
+						Months[currMonth] = 0;
+						currDate = new Date(currDate.fullYear, currDate.month + 1, currDate.date);
+						currMonth = monthLabels[currDate.month] + currDate.fullYear;
+					}
+					summaryItem += "<Total>"+totalBudget+"</Total>";
+					summaryItem += "</summary>";
+					var xmlList:XMLList = XMLList(summaryItem);
+					xm.appendChild(xmlList);
+				}
+				summaryXmlList = xm.children();
+				summaryXmlLoadComplete();
+			}
+			
+			private function getMinDate(myList:XMLListCollection):Date {
+				var minDate:Date;
+				var tempDate:Date;
+				for each (var node:XML in myList){
+					tempDate = DateField.stringToDate(node.fromDate, "MM/DD/YYYY");
+					if (minDate == null) {minDate = tempDate;}
+					else if(tempDate.getTime() < minDate.getTime() ) {minDate = tempDate;}
+				} 
+				return minDate;
+			}
+			
+			private function getMaxDate(myList:XMLListCollection):Date {
+				var maxDate:Date;
+				var tempDate:Date;
+				for each (var node:XML in myList){
+					tempDate = DateField.stringToDate(node.toDate, "MM/DD/YYYY");
+					if (maxDate == null) {maxDate = tempDate;}
+					else if(tempDate.getTime() > maxDate.getTime() ) {maxDate = tempDate;}
+				} 
+				return maxDate;
+			}
+			
+			private function getDaysDiff(date1:Date, date2:Date):Number{
+				var daysInMilliseconds:int = 1000*60*60*24;
+				var dayDiff:Number = (date2.time - date1.time) / daysInMilliseconds;
+				return dayDiff;
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+				var invalid:int = 0;
+				var strV:StringValidator = new StringValidator();
+				strV.required = true;
+				strV.property = "text";
+				strV.listener=teamList;
+				vResult = strV.validate(teamList.selectedItem);
+				if(vResult.type == "invalid") {invalid += 1; teamList.errorString = vResult.message; }
+				//strV.listener=expenseTxt;
+				//vResult = strV.validate(expenseTxt.text);
+				//if(vResult.type == "invalid") {invalid += 1; expenseTxt.errorString = vResult.message;}
+				//strV.listener=capitalTxt;
+				//vResult = strV.validate(capitalTxt.text);
+				//if(vResult.type == "invalid") {invalid += 1; capitalTxt.errorString = vResult.message;}
+				strV.listener=descrTxt;
+				vResult = strV.validate(descrTxt.text);
+				if(vResult.type == "invalid") {invalid += 1; descrTxt.errorString = vResult.message;}
+				strV.listener=timeFrameGrid;
+				vResult = strV.validate(timeFrameGrid.dataProvider);
+				if(vResult.type == "invalid") {invalid += 1; timeFrameGrid.errorString = vResult.message;}
+				strV.listener=contactsGrid;
+				vResult = strV.validate(contactsGrid.dataProvider);
+				if(vResult.type == "invalid") {invalid += 1; contactsGrid.errorString = vResult.message;}
+					
+				if(invalid == 0) {return true;}
+				else {Alert.show("Data input error, please verify entries in red"); return false;}
+			}
+			
+			private function getParams():Object{
+				var params:Object = new Object();
+				params["initId"] = initIdTxt.text;
+				params["team"] = teamList.selectedIndex.toString();
+				params["description"] = descrTxt.text;
+				params["expense"] = expenseTxt.text;
+				params["expDesc"] = initXML.initiative.expDesc;
+				params["capital"] = capitalTxt.text;
+				params["capDesc"] = initXML.initiative.capDesc;
+				params["dependNotes"] = dependTxt.text;
+				params["benefits"] = benefitsTxt.text;
+				if(initXML.initiative.owner == null || initXML.initiative.owner == "") {params["owner"] = usernameTxt.text;}
+				else {params["owner"] = initXML.initiative.owner;}
+				params["user"] = usernameTxt.text;
+				params["expItems"] = "";
+				for each (var node:XML in expXMLList){
+					params["expItems"] += node.catId+"!~"+node.category+"!~"+node.description+"!~"+node.qty+"!~"+node.itemPrice+"!~"+node.totalPrice+"!~"+node.fromDate+"!~"+node.toDate+"|@";
+				}
+				params["capItems"] = "";
+				for each (node in capXMLList){
+					params["capItems"] += node.catId+"!~"+node.category+"!~"+node.description+"!~"+node.qty+"!~"+node.itemPrice+"!~"+node.totalPrice+"!~"+node.fromDate+"!~"+node.toDate+"|@";
+				}
+				params["timeFrames"] = "";
+				for each (node in timeFrameXMLList){
+					params["timeFrames"] += node.phase+"!~"+node.value+"|@";
+				}
+				params["dependIds"] = "";
+				for each (node in dependinitXMLList){
+					params["dependIds"] += node.id+"|@";
+				}
+				params["contacts"] = "";
+				for each (node in contactXMLList){
+					params["contacts"] += node.name+"!~"+node.telephone+"!~"+node.organization+"|@";
+				}
+
+				return params;
+			}
+			
+			private function clearForm():void {
+				summaryXmlList = new XMLList();
+				var dgCols:Array = new Array();
+				summaryGrid.columns = dgCols;                            
+				summaryGrid.dataProvider = summaryXmlList;
+				initXML = new XML(initXMLtemp);
+				timeFrameXMLList = new XMLListCollection();
+				dependinitXMLList = new XMLListCollection();
+				contactXMLList = new XMLListCollection();
+				expXMLList = new XMLListCollection();
+				capXMLList = new XMLListCollection();
+				attachXMLList = new XMLListCollection();
+				searchXMLList = new XMLListCollection();
+				teamList.errorString = "";
+				expenseTxt.errorString = "";
+				descrTxt.errorString = "";
+				capitalTxt.errorString = "";
+				timeFrameGrid.errorString = "";
+				contactsGrid.errorString = "";
+				initIdTxt.text = "";
+				teamList.selectedIndex = 0;
+				initXML.initiative.expense = "$0.00";
+				initXML.initiative.expDesc = "";
+				expenseTxt.text = "$0.00";
+				initXML.initiative.capital = "$0.00";
+				initXML.initiative.capDesc = "";
+				capitalTxt.text = "$0.00";
+				descrTxt.text = "";
+				dependTxt.text = "";
+				benefitsTxt.text = "";
+				attachmentImg.enabled = false;
+				saveBtn.enabled = true;
+			}
+			
+			private function getSearch(state:String):void{
+				var params:Object = new Object();
+				if(state == "CriticalItems") {
+					params["ok"] = 1;
+					if(criticalOwnerList.selectedIndex >= 0) {params["owner"] = criticalOwnerList.selectedItem.username;}
+					if(criticalTeamList.selectedIndex >= 0) {params["team"] = criticalTeamList.selectedItem.id;}
+					useHttpService(params, "getCritical");
+				}
+				else if(state == "SummaryReports") {
+					params["ok"] = 1;
+					params["initId"] = sumInitIdTxt.text;
+					if(sumOwnerList.selectedIndex >= 0) {params["owner"] = sumOwnerList.selectedItem.username;}
+					if(sumTeamList.selectedIndex >= 0) {params["team"] = sumTeamList.selectedItem.id;}
+					useHttpService(params, "getSummary");
+				}
+				else if(state == "Logs") {
+					params["user"] = usernameTxt.text;
+					params["sInitId"] = logsInitIdTxt.text;
+					if(logsOwnerList.selectedIndex >= 0) {params["sOwner"] = logsOwnerList.selectedItem.username;}
+					if(logsTeamList.selectedIndex >= 0) {params["sTeam"] = logsTeamList.selectedItem.id;}
+					params["fromDate"] = logsFromDate.text;
+					params["toDate"] = logsToDate.text;
+					useHttpService(params, "logSearch");
+				}
+			}
+			
+			private function clearSearchCriterias(state:String):void{
+				if(state == "CriticalItems") {
+					criticalOwnerList.selectedIndex = -1;
+					criticalTeamList.selectedIndex = -1;
+				}
+				else if(state == "SummaryReports") {
+					sumInitIdTxt.text = "";
+					sumOwnerList.selectedIndex = -1;
+					sumTeamList.selectedIndex = -1;
+				}
+				else if(state == "Logs") {
+					logsInitIdTxt.text = "";
+					logsOwnerList.selectedIndex = -1;
+					logsTeamList.selectedIndex = -1;
+					logsFromDate.text = "";
+					logsToDate.text = "";
+				}
+			}
+			
+			private function viewItem(state:String):void{
+				var params:Object = new Object();
+				if(state == "CriticalItems") {
+					params["initId"] = criticalGrid.selectedItem.id;
+					params["user"] = usernameTxt.text;
+				}
+				else if(state == "SummaryReports") {
+					params["initId"] = sumGrid.selectedItem.id;
+					params["user"] = usernameTxt.text;
+				}
+				currentState = 'IntegrationForms';
+				clearForm();
+				parentDocument.useHttpService(params,"view");	
+			}
+						
+		]]>
+	</fx:Script>
+	<fx:Declarations>	
+		<fx:XML id="xmlMenu">
+			<root>
+				<node label="Initiative              -">
+					<node label="New Initiative"/>
+					<node label="View Initiatives"/>
+				</node>
+			</root>
+		</fx:XML>
+		<fx:XML id="teamsXML"/>
+		<fx:XML id="usersXML"/>
+		<fx:XML id="itemCatXML" />
+		<fx:XML id="initXML" source="files/initiativeBLANK.xml"/>
+		<fx:XML id="initXMLtemp" source="files/initiativeBLANK.xml"/>
+		<fx:XML id="teamContactsXML"/>
+		<mx:XMLListCollection id="teamsXMLList" />
+		<mx:XMLListCollection id="usersXMLList" />
+		<mx:XMLListCollection id="itemCatXMLList" />
+		<mx:XMLListCollection id="timeFrameXMLList" />
+		<mx:XMLListCollection id="dependinitXMLList" />
+		<mx:XMLListCollection id="contactXMLList" />
+		<mx:XMLListCollection id="expXMLList" />
+		<mx:XMLListCollection id="capXMLList" />
+		<mx:XMLListCollection id="attachXMLList" />
+		<mx:XMLListCollection id="searchXMLList" />
+		<mx:XMLListCollection id="criticalXMLList" />
+		<mx:XMLListCollection id="sumGridXMLList" />
+		<mx:XMLListCollection id="sumGraphXMLList" />
+		<mx:XMLListCollection id="logXMLList" />
+		<mx:XMLListCollection id="TCCXMLList"/>
+		<mx:CurrencyFormatter id="cFormat" precision="2" currencySymbol="$" useThousandsSeparator="true"/>
+		<mx:DateFormatter id="formatDateTime" formatString="MM/DD/YYYY L:NN A"/>
+	</fx:Declarations>
+
+	<s:layout.Login>
+		<s:BasicLayout/>
+	</s:layout.Login>
+	<s:layout.Home>
+		<s:BasicLayout/>
+	</s:layout.Home>
+	<s:layout.CriticalItems>
+		<s:BasicLayout/>
+	</s:layout.CriticalItems>
+	<s:layout.SummaryReports>
+		<s:BasicLayout/>
+	</s:layout.SummaryReports>
+	<s:layout.Logs>
+		<s:BasicLayout/>
+	</s:layout.Logs>
+	<s:layout.IntegrationForms>
+		<s:BasicLayout/>
+	</s:layout.IntegrationForms>
+	<s:Panel width="262" height="140" verticalCenter="-13" horizontalCenter="0" chromeColor="#F99D70" title="A/CITP | Login" includeIn="Login">
+		<s:layout>
+			<s:BasicLayout/>
+		</s:layout>
+		<s:TextInput x="105" y="14" id="usernameTxt" enter="useHttpService({username: usernameTxt.text, passwd: passwdTxt.text},'login')"/>
+		<s:TextInput x="105" y="44" id="passwdTxt" displayAsPassword="true" enter="useHttpService({username: usernameTxt.text, passwd: passwdTxt.text},'login')"/>
+		<s:Label x="28" y="20" text="Username:"/>
+		<s:Label x="28" y="50" text="Password:"/>
+		<s:Button x="163" y="74" label="Login" click="useHttpService({username: usernameTxt.text, passwd: passwdTxt.text},'login')"/>
+	</s:Panel>
+	<mx:Image includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" x="24" y="10" source="images/att_logo.png"/>
+	<s:RichEditableText text="AT&amp;T / Centennial Integration Tracking Portal" fontSize="20" color="#2D88CF" includeIn="IntegrationForms" horizontalCenter="3" top="14" enabled="false"/>
+	<s:Button includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" label="Home" chromeColor="#F99D70" click="currentState='Home'" top="47" horizontalCenter="-225" top.IntegrationForms="47" horizontalCenter.IntegrationForms="-226" top.Home="47" horizontalCenter.Home="-226" top.CriticalItems="47" horizontalCenter.CriticalItems="-226" top.SummaryReports="47" horizontalCenter.SummaryReports="-226" top.Logs="47" horizontalCenter.Logs="-226" tabIndex="0"/>
+	<s:Button includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" label="Critical Items" chromeColor="#F99D70" click="currentState='CriticalItems';getSearch(this.currentState.toString())" top="47" horizontalCenter="-6" label.IntegrationForms="Critical Items" tabIndex="0"/>
+	<s:Button includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" label="Summary Reports" click="currentState='SummaryReports';getSearch(this.currentState.toString())" chromeColor="#F99D70" top="47" horizontalCenter="103" tabIndex="0"/>
+	<s:Button includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" label="Configuration" chromeColor="#F99D70" click="currentState='Logs';getSearch(this.currentState.toString())" top="47" horizontalCenter="213" label.Logs="User Logs" width.Logs="101" top.Logs="47" horizontalCenter.Logs="216" width.SummaryReports="101" width.CriticalItems="101" width.Home="101" width.IntegrationForms="101" label.SummaryReports="User Logs" label.CriticalItems="User Logs" label.Home="User Logs" label.IntegrationForms="User Logs" top.IntegrationForms="47" horizontalCenter.IntegrationForms="216" top.Home="47" horizontalCenter.Home="216" top.CriticalItems="47" horizontalCenter.CriticalItems="216" top.SummaryReports="47" horizontalCenter.SummaryReports="216" tabIndex="0"/>
+	<s:Button id="popUpMenuBtn" includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" label="Integration Forms" chromeColor="#F99D70" width="135" horizontalCenter="-122" top="47" click="showMenu();" mouseOver="showMenu();" tabIndex="0"/>
+		
+	
+	<s:Panel includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" chromeColor="#F99D70" title.Home="Home" title.CriticalItems="Crtitical Items" title.SummaryReports="Summary Reports" title="Logs" fontSize.IntegrationForms="12" title.IntegrationForms="Initiative Trackin Form" left.Logs="30" left.Home="30" left.SummaryReports="30" left.CriticalItems="30" right.Logs="30" right.Home="30" right.SummaryReports="30" right.CriticalItems="30" top.Logs="76" top.Home="76" top.SummaryReports="76" top.CriticalItems="76" bottom.Logs="20" bottom.Home="20" bottom.SummaryReports="20" bottom.CriticalItems="20" left.IntegrationForms="30" right.IntegrationForms="30" top.IntegrationForms="76" bottom.IntegrationForms="20">
+		<s:layout>
+			<s:BasicLayout/>
+		</s:layout>
+		<mx:DataGrid id="tContactsDg" includeIn="Home" dataProvider="{TCCXMLList}" right="10" left="10" top="10" bottom="10" variableRowHeight="true" editable="false" dropShadowVisible="false">
+			<mx:columns>
+				<mx:DataGridColumn dataField="id" headerText="Team #"  resizable="false" width="60" backgroundColor="#BBE1F5" textAlign="center" fontWeight="normal"/>
+				<mx:DataGridColumn  headerText="Team (Area)" dataField="teamarea" wordWrap="true" textAlign="center" fontWeight="normal">
+					<mx:itemRenderer>
+						<fx:Component>
+							<mx:Text htmlText="{data.teamarea}"/>
+						</fx:Component>
+					</mx:itemRenderer>
+				</mx:DataGridColumn>
+				<mx:DataGridColumn headerText="AT&amp;T / Centennial Lead(s)" dataField="leads" wordWrap="true" textAlign="center" fontWeight="normal">
+					<mx:itemRenderer>
+						<fx:Component>
+							<mx:Text htmlText="{data.leads}"/>	
+						</fx:Component>	
+					</mx:itemRenderer>
+				</mx:DataGridColumn>
+				<mx:DataGridColumn headerText="AT&amp;T SME's" wordWrap="true" textAlign="center" dataField="sme" fontWeight="normal">
+					<mx:itemRenderer>
+						<fx:Component>
+							<mx:Text htmlText="{data.sme}"/>	
+						</fx:Component>	
+					</mx:itemRenderer>	
+				</mx:DataGridColumn>
+			</mx:columns>	
+		</mx:DataGrid>
+		<mx:DataGrid right="10" height="86" y="28" width="293" dropShadowVisible="true" includeIn="IntegrationForms" id="contactsGrid" dataProvider="{contactXMLList}" doubleClickEnabled="true" itemDoubleClick="showKContacts(event, 'Save');" tabIndex="7">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Name" dataField="name"/>
+				<mx:DataGridColumn headerText="Telephone" dataField="telephone"/>
+				<mx:DataGridColumn headerText="Organization" dataField="organization"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Label y="10" text="*Key Contacts:" right="215" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:Button label="Save" bottom="10" horizontalCenter="-79" includeIn="IntegrationForms" id="saveBtn" click="procInit(saveBtn.label);" tabIndex="10"/>
+		<s:Button label="Delete" enabled="false" bottom="10" horizontalCenter="-1" includeIn="IntegrationForms" id="deleteBtn" click="actionPrompt('Delete','delete Initiative');" tabIndex="11"/>
+		<s:Button label="Close" horizontalCenter="77" bottom="10" includeIn="IntegrationForms" id="closeBtn" click="currentState='Home';" tabIndex="12"/>
+		<s:Button y="116" label="Add" width="45" right="258" click="showKContacts(event, 'Add');" includeIn="IntegrationForms" id="contactsAddBtn" tabIndex="0"/>
+		<s:TextInput y="10" left="126" includeIn="IntegrationForms" width="146" id="initIdTxt" enabled="false" text="{initXML.initiative.id}"/>
+		<s:TextArea y="26" height="88" horizontalCenter="-17" editable="true" maxChars="200" includeIn="IntegrationForms" id="descrTxt" text="{initXML.initiative.description}" tabIndex="5" width="365"/>
+		<s:Label y="14" text="Initiative ID:" left="56" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:Label y="46" text="*Team:" left="80" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:Label y="10" text="*Description:" horizontalCenter="-159" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:TextInput y="66" left="126" includeIn="IntegrationForms" width="146" id="expenseTxt" text="{initXML.initiative.expense}" click="showExpCap('Expense')" editable="false" tabIndex="2" toolTip="Click to open details window"/>
+		<s:Label y="71" text="Expense Required:" left="12" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:Label y="102" text="Capital Required:" left="21" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:TextInput y="92" left="126" includeIn="IntegrationForms" width="146" id="capitalTxt" text="{initXML.initiative.capital}" click="showExpCap('Capital')" editable="false" tabIndex="3" toolTip="Click to open details window"/>
+		<mx:DataGrid bottom="81" left="21" right="10" dropShadowVisible="true" includeIn="IntegrationForms" doubleClickEnabled="true" itemDoubleClick="showExpCap(summaryGrid.selectedItem.Budget_Type);" editable="false" top="328" rowCount="2" id="summaryGrid" creationComplete="summaryXmlLoadComplete()"/>
+		<mx:DataGrid y="139" height="70" width="245" left="27" dropShadowVisible="true" includeIn="IntegrationForms" id="timeFrameGrid" dataProvider="{timeFrameXMLList}" editable="false" doubleClickEnabled="true" itemDoubleClick="showTFrame(event, 'Save');" tabIndex="4">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Phase" dataField="phase" width="70"/>
+				<mx:DataGridColumn headerText="Time Frame" dataField="value"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Label y="122" text="*Time frame to implement:" left="28" includeIn="IntegrationForms" fontWeight="bold"/>
+		<mx:HRule bottom="39" includeIn="IntegrationForms" left="27" right="27"/>
+		<s:Button y="210" label="Add" left="27" width="45" click="showTFrame(event, 'Add');" includeIn="IntegrationForms" id="timeFrameAddBtn" tabIndex="0"/>
+		<s:Label y="122" text="Dependencies:" horizontalCenter="-154" includeIn="IntegrationForms" fontWeight="bold"/>
+		<mx:DataGrid height="70" width="361" dropShadowVisible="true" horizontalCenter="-16" y="139" includeIn="IntegrationForms" id="dependGrid" dataProvider="{dependinitXMLList}" tabIndex="6">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Initiative ID" dataField="id" resizable="false" width="70"/>
+				<mx:DataGridColumn headerText="Description" dataField="description"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Button y="210" label="Add" includeIn="IntegrationForms" click="showSearch('Dependencies Search');" id="dependAddBtn" width="45" horizontalCenter="-175" tabIndex="0"/>
+		<s:TextArea y="165" right="10" width="293" maxChars="250" height="66" includeIn="IntegrationForms" editable="true" id="dependTxt" text="{initXML.initiative.dependNotes}" tabIndex="8"/>
+		<s:Label y="145" text="Dependencies and Risks Comments:" right="94" includeIn="IntegrationForms" fontWeight="bold"/>
+		<s:Label y="254" text="Benefits / Savings Expected:" left="10" includeIn="IntegrationForms" fontWeight="bold" width="123" height="26"/>
+		<s:TextArea height="48" maxChars="200" editable="true" includeIn="IntegrationForms" y="245" left="126" right="10" id="benefitsTxt" text="{initXML.initiative.benefits}" tabIndex="9"/>
+		<mx:DataGrid includeIn="CriticalItems" top="119" bottom="10" left="10" right="10" dataProvider="{criticalXMLList}" doubleClickEnabled="true" itemDoubleClick="viewItem(this.currentState.toString())" id="criticalGrid">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Initiative ID" dataField="id" width="70"/>
+				<mx:DataGridColumn headerText="Team" dataField="team"/>
+				<mx:DataGridColumn headerText="Description" dataField="description"/>
+				<mx:DataGridColumn headerText="Dependencies/Risks Comments" dataField="dependNotes"/>
+				<mx:DataGridColumn headerText="Owner" dataField="owner"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Label includeIn="SummaryReports" text="Total Initiatives: " fontWeight="bold" y="323" right="145"/>
+		<s:TextInput includeIn="SummaryReports" y="316" right="11" id="totalInitsTxt" editable="false"/>
+		<mx:ColumnChart includeIn="SummaryReports" id="sumGraph" dataProvider="{sumGraphXMLList}" bottom="10" left="9" right="10" top="342" showDataTips="true">
+			<mx:horizontalAxis>
+				<mx:CategoryAxis categoryField="month"/>
+			</mx:horizontalAxis>
+			<mx:series>
+				<mx:ColumnSeries yField="expense" displayName="Expenses"/>
+				<mx:ColumnSeries yField="capital" displayName="Capital"/>
+			</mx:series>
+		</mx:ColumnChart>
+		<mx:Legend includeIn="SummaryReports" dataProvider="{sumGraph}" width="215" height="25" left="9" top="314"/>
+		<mx:DataGrid includeIn="SummaryReports" left="8" right="12" horizontalCenter="-3" top="102" height="207" id="sumGrid" dataProvider="{sumGridXMLList}" doubleClickEnabled="true" itemDoubleClick="viewItem(this.currentState.toString())">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Initiative ID" dataField="id"/>
+				<mx:DataGridColumn headerText="Team" dataField="team"/>
+				<mx:DataGridColumn headerText="Description" dataField="description"/>
+				<mx:DataGridColumn headerText="Expense" dataField="expense"/>
+				<mx:DataGridColumn headerText="Capital" dataField="capital"/>
+				<mx:DataGridColumn headerText="Total Time Frame" dataField="totalTframe"/>
+				<mx:DataGridColumn headerText="Owner" dataField="owner"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:DropDownList includeIn="IntegrationForms" y="38" id="teamList" dataProvider="{teamsXMLList}" labelField="name" selectedIndex="{initXML.initiative.team}" tabIndex="1" left="127" width="145" change="initXML.initiative.team=teamList.selectedIndex"/>
+		<s:Button includeIn="IntegrationForms" y="210" label="Delete" id="timeFrameDelBtn" width="60" click="actionPrompt('Delete','delete time frame');" left="213" tabIndex="0"/>
+		<s:Button includeIn="IntegrationForms" y="116" label="Delete" id="contactsDelBtn" width="60" right="11" click="actionPrompt('Delete','delete contact');" tabIndex="0"/>
+		<s:Button includeIn="IntegrationForms" y="210" label="Delete" width="60" id="dependDelBtn" click="actionPrompt('Delete','delete dependency');" horizontalCenter="134" tabIndex="0"/>
+		<s:Label y="309" text="Monthly Expense/Capital Summary:" left="23" fontWeight="bold" width="396" height="26" includeIn="IntegrationForms"/>
+		<mx:DataGrid bottom="39" right="19" left="19" includeIn="Logs" top="141" id="logsGrid" dataProvider="{logXMLList}" doubleClickEnabled="true" itemDoubleClick="showLogEntry('Save')">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Date" dataField="date"/>
+				<mx:DataGridColumn headerText="Owner" dataField="owner"/>
+				<mx:DataGridColumn headerText="Team" dataField="teamName"/>
+				<mx:DataGridColumn headerText="Initiative ID" dataField="initId"/>
+				<mx:DataGridColumn headerText="Log Notes" dataField="logNotes">
+					<mx:itemRenderer>
+						<fx:Component>
+							<mx:Text htmlText="{data.logNotes}" />
+						</fx:Component>
+					</mx:itemRenderer>					
+				</mx:DataGridColumn>
+			</mx:columns>
+		</mx:DataGrid>
+		<mx:Image includeIn="IntegrationForms" id="attachmentImg" source="images/attachment.png" width="27" height="22" right="0" bottom="43" buttonMode="true" useHandCursor="true" click="showAttachments()" enabled="false" toolTip="Click to open attachments window. Only enabled after initiative has been saved"/>
+		<s:Label includeIn="IntegrationForms" text="Attachements:" right="30" bottom="47"/>
+		<mx:HRule horizontalCenter="-8" includeIn="Logs" top="81" height="2" left="28" right="43"/>
+		<s:Button label="Add" id="logAddBtn" includeIn="Logs" bottom="10" left="18" click="showLogEntry('Add')"/>
+		<mx:DateField includeIn="Logs" right="50" top="16" yearNavigationEnabled="true" id="logsFromDate"/>
+		<mx:DateField includeIn="Logs" right="50" top="47" yearNavigationEnabled="true" id="logsToDate"/>
+		<s:TextInput width="112" includeIn="Logs" left="74" top="23" id="logsInitIdTxt"/>
+		<s:DropDownList includeIn="Logs" left="74" top="53" id="logsOwnerList" dataProvider="{usersXMLList}" labelField="name" width="224"></s:DropDownList>
+		<s:Label text="Search Criterias:" fontWeight="bold" textDecoration="underline" includeIn="Logs" left="6" top="3"/>
+		<s:Label text="Initiative ID:" includeIn="Logs" left="9" top="28"/>
+		<s:Label text="Owner:" includeIn="Logs" left="30" top="59"/>
+		<s:Label text="From Date:" includeIn="Logs" right="152" top="23"/>
+		<s:Label text="To Date:" includeIn="Logs" right="154" top="52"/>
+		<s:DropDownList includeIn="Logs" horizontalCenter="-5" top="23" width="224" id="logsTeamList" dataProvider="{teamsXMLList}" labelField="name"></s:DropDownList>
+		<s:Label text="Team:" includeIn="Logs" horizontalCenter="-138" top="28"/>
+		<s:Button y="91" label="Search" includeIn="Logs" horizontalCenter="-63" click="getSearch(this.currentState.toString())"/>
+		<s:Button y="91" label="Clear" includeIn="Logs" horizontalCenter="38" click="clearSearchCriterias(this.currentState.toString())"/>
+		<s:Button includeIn="Logs" label="Delete" id="logDelBtn" bottom="10" right="20" click="actionPrompt('Delete','delete log entry')"/>
+		<mx:HRule horizontalCenter="-24" top="81" height="2" left="13" right="58" includeIn="SummaryReports"/>
+		<s:TextInput width="112" left="101" top="23" includeIn="SummaryReports" id="sumInitIdTxt"/>
+		<s:DropDownList top="23" includeIn="SummaryReports" dataProvider="{usersXMLList}" labelField="name" id="sumOwnerList" right="38" width="247"></s:DropDownList>
+		<s:Label text="Search Criterias:" fontWeight="bold" textDecoration="underline" left="6" top="3" includeIn="SummaryReports"/>
+		<s:Label text="Initiative ID:" left="35" top="29" includeIn="SummaryReports"/>
+		<s:Label text="Owner:" top="28" includeIn="SummaryReports" right="289" width="40"/>
+		<s:DropDownList horizontalCenter="-1" top="23" includeIn="SummaryReports" dataProvider="{teamsXMLList}" labelField="name" id="sumTeamList" width="250"></s:DropDownList>
+		<s:Label text="Team:" horizontalCenter="-156" top="27" includeIn="SummaryReports"/>
+		<s:Button y="52" label="Search" horizontalCenter="-67" includeIn="SummaryReports" click="getSearch(this.currentState.toString())"/>
+		<s:Button y="52" label="Clear" horizontalCenter="45" includeIn="SummaryReports" click="clearSearchCriterias(this.currentState.toString())"/>
+		<mx:HRule top="87" height="2" left="54" right="54" includeIn="CriticalItems"/>
+		<s:DropDownList top="23" includeIn="CriticalItems" dataProvider="{usersXMLList}" labelField="name" id="criticalOwnerList" right="38" width="250"></s:DropDownList>
+		<s:Label text="Search Criterias:" fontWeight="bold" textDecoration="underline" left="6" top="3" includeIn="CriticalItems"/>
+		<s:Label text="Owner:" top="28" includeIn="CriticalItems" right="292" width="40"/>
+		<s:DropDownList includeIn="CriticalItems" dataProvider="{teamsXMLList}" labelField="name" id="criticalTeamList" left="80" top="25" width="250"></s:DropDownList>
+		<s:Label text="Team:" top="30" includeIn="CriticalItems" left="40"/>
+		<s:Button y="52" label="Search" horizontalCenter="-67" includeIn="CriticalItems" click="getSearch(this.currentState.toString())"/>
+		<s:Button y="52" label="Clear" horizontalCenter="34" includeIn="CriticalItems" click="clearSearchCriterias(this.currentState.toString())"/>
+
+	</s:Panel>
+
+	<s:Label includeIn="Login" text="Minimum Resolution to view app is 1280x800" width="254" horizontalCenter="0" verticalCenter="94" textAlign="center"/>
+	<s:Label click="currentState='Login'" includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" y="47" text="Logout" right="76" fontWeight="bold" textDecoration="none" fontStyle="normal" color="#000000" y.IntegrationForms="47" right.IntegrationForms="76"/>
+	<mx:Image includeIn="Logs,IntegrationForms,Home,SummaryReports,CriticalItems" source="images/Vista-logout.png" width="38" height="35" buttonMode="true" useHandCursor="true" click="actionPrompt('Logout','logout');" id="logoutImg" y="33" right.IntegrationForms="30" right.Home="30" right.CriticalItems="30" right.SummaryReports="30" right.Logs="30"/>
+	<s:RichEditableText text="AT&amp;T / Centennial Integration Tracking Portal" fontSize="20" color="#2D88CF" horizontalCenter="3" top="14" enabled="false" includeIn="Home"/>
+	<s:RichEditableText text="AT&amp;T / Centennial Integration Tracking Portal" fontSize="20" color="#2D88CF" horizontalCenter="3" top="14" enabled="false" includeIn="CriticalItems"/>
+	<s:RichEditableText text="AT&amp;T / Centennial Integration Tracking Portal" fontSize="20" color="#2D88CF" horizontalCenter="3" top="14" enabled="false" includeIn="SummaryReports"/>
+	<s:RichEditableText text="AT&amp;T / Centennial Integration Tracking Portal" fontSize="20" color="#2D88CF" horizontalCenter="3" top="14" enabled="false" includeIn="Logs"/>
+</s:Application>

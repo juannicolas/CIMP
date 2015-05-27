@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="600" height="370">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import PopUps.*;
+			
+			import flash.events.MouseEvent;
+			
+			import mx.collections.IViewCursor;
+			import mx.controls.Alert;
+			import mx.controls.Text;
+			import mx.events.CloseEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.managers.PopUpManager;
+			import mx.validators.*;
+			
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			public function calcTotal():void{
+				var dp:Object=itemsGrid.dataProvider;
+				var cursor:IViewCursor=dp.createCursor();
+				var regEx:RegExp = /[,$]/g;
+				var total:Number = 0;
+				while( !cursor.afterLast )
+				{
+					var tempT:String = cursor.current.totalPrice;
+					tempT = tempT.replace(regEx,"");
+					total += parseFloat(tempT);
+					cursor.moveNext();
+				}
+				totalTxt.text = cFormat.format(total.toString());
+			}
+			
+			private function showLineItems(event:Event, btnlbl:String):void 
+			{
+				var lineItems:LineItems=LineItems(PopUpManager.createPopUp( this, LineItems , true));  
+				PopUpManager.centerPopUp(lineItems);
+				lineItems.saveBtn.label = btnlbl;
+				lineItems.itemCatXMLList = parentDocument.itemCatXMLList;
+				lineItems.catList.selectedIndex = 0;
+				if (btnlbl == "Save") {
+					lineItems.catList.selectedIndex = itemsGrid.selectedItem.catId;
+					lineItems.qtyTxt.text = itemsGrid.selectedItem.qty;
+					lineItems.itemPriceTxt.text = itemsGrid.selectedItem.itemPrice;
+					lineItems.priceTxt.text = itemsGrid.selectedItem.totalPrice;
+					lineItems.fromDate.text = itemsGrid.selectedItem.fromDate;
+					lineItems.toDate.text = itemsGrid.selectedItem.toDate;
+					lineItems.descTxt.text = itemsGrid.selectedItem.description;
+				}
+			}
+			
+			public function actionPrompt():void 
+			{
+				Alert.show("Are you sure you wish to delete this line item?", "Delete",Alert.OK | Alert.CANCEL, this, function (e:CloseEvent):void {actionListener(e)}, null, Alert.OK);
+			}
+			
+			private function actionListener(eventObj:CloseEvent):void 
+			{
+				if (eventObj.detail==Alert.OK) {
+						if(itemsGrid.selectedIndex >= 0) {
+							itemsGrid.dataProvider.removeItemAt(itemsGrid.selectedIndex);
+							calcTotal();
+						}
+						else {Alert.show("No record selected for deletion.");}
+				}
+			}
+			
+			private function saveItem(event:Event):void{
+				//var validData:Boolean = validateInput();
+				//if (validData == true) {
+					if(expCapWindow.title == "Expense") {
+						parentDocument.initXML.initiative.expense = totalTxt.text;
+						parentDocument.initXML.initiative.expDesc = descTxt.text;
+						parentDocument.expXMLList = itemsGrid.dataProvider;
+					}
+					else{
+						parentDocument.initXML.initiative.capital = totalTxt.text
+						parentDocument.initXML.initiative.capDesc = descTxt.text;
+						parentDocument.capXMLList = itemsGrid.dataProvider;
+					}
+					parentDocument.calcSummary();
+					PopUpManager.removePopUp(this);
+				//}
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+				var invalid:int = 0;;
+				strV.listener=descTxt;
+				vResult = strV.validate(descTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				strV2.listener=totalTxt;
+				vResult = strV2.validate(totalTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+			
+				if(invalid == 0) {return true;}
+				else {Alert.show("Data input error, please verify entries in red"); return false;}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<mx:StringValidator id="strV" required="true"/>
+		<mx:StringValidator id="strV2" required="true" requiredFieldError="This field is required. Please add a line item."/>
+		<mx:CurrencyFormatter id="cFormat" precision="2" currencySymbol="$" useThousandsSeparator="true"/>
+	</fx:Declarations>
+	<s:TitleWindow width="600" height="370" chromeColor="#EB871B" title="Expenses | Capital" x="0" y="0" close="closeWindows(event)" id="expCapWindow">
+		<s:Button label="Save" horizontalCenter="-74" bottom="10" id="saveBtn" click="saveItem(event)"/>
+		<s:Button label="Delete" horizontalCenter="261" bottom="72" width="60" id="delBtn" click="actionPrompt()"/>
+		<s:Button label="Close" click="closeWindows(event);" bottom="10" horizontalCenter="72" id="closeBtn"/>
+		<mx:DataGrid width="578" x="11" height="117" y="126" id="itemsGrid"  doubleClickEnabled="true" itemDoubleClick="showLineItems(event, 'Save');">
+			<mx:columns>
+				<mx:DataGridColumn dataField="category" headerText="Category"/>
+				<mx:DataGridColumn dataField="description" headerText="Description"/>
+				<mx:DataGridColumn dataField="qty" headerText="Qty."/>
+				<mx:DataGridColumn dataField="itemPrice" headerText="Item Price"/>
+				<mx:DataGridColumn dataField="totalPrice" headerText="Total Price"/>
+				<mx:DataGridColumn dataField="fromDate" headerText="From Date"/>
+				<mx:DataGridColumn dataField="toDate" headerText="To Date"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Button y="244" label="Add" right="543" width="45" click="showLineItems(event, 'Add');" id="addBtn"/>
+		<s:TextInput x="111" y="10" id="initIdTxt" enabled="false"/>
+		<s:Label text="Initiavite ID:" left="46" y="15"/>
+		<s:TextArea x="111" y="40" width="374" height="71" maxChars="250" id="descTxt"/>
+		<s:Label y="44" text="Description:" left="42"/>
+		<mx:HRule width="581" horizontalCenter="0" bottom="40"/>
+		<s:TextInput y="269" right="10" width="84" id="totalTxt" editable="false"/>
+		<s:Label y="274" text="Total $ :" right="96"/>
+		<s:Label x="12" y="111" text="Line Items:"/>
+	</s:TitleWindow>
+</s:Application>

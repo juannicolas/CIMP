@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="240" height="180">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Text;
+			import mx.managers.PopUpManager;
+			import mx.events.ValidationResultEvent;
+			import mx.validators.*;
+			import mx.controls.Alert;
+			
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+				var invalid:int = 0;;
+
+				strV.listener=nameTxt;
+				vResult = strV.validate(nameTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				strV.listener=orgTxt;
+				vResult = strV.validate(orgTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				phoneV.listener=telNumTxt;
+				vResult = phoneV.validate(telNumTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				if(invalid == 0) {return true;}
+				else {Alert.show("Data input error, please verify entries in red"); return false;}
+			}
+			
+			private function saveItem(event:Event):void{
+				var validData:Boolean = validateInput();
+				if (validData == true) {
+					if(saveBtn.label == "Add") {
+						if (nameTxt.text != "" && telNumTxt.text != "" && orgTxt.text != "") {
+							var xm:XML = <contact></contact>;
+							var xmlList:XMLList = XMLList("<name>"+nameTxt.text+"</name><telephone>"+telNumTxt.text+"</telephone><organization>"+ orgTxt.text +"</organization>");
+							xm.appendChild(xmlList);
+							try{parentDocument.contactsGrid.dataProvider.addItem(xm);}
+							catch (e:Error){Alert.show(e.message);}
+						}
+					}
+					else{
+						parentDocument.contactsGrid.selectedItem.name = nameTxt.text;
+						parentDocument.contactsGrid.selectedItem.telephone = telNumTxt.text;
+						parentDocument.contactsGrid.selectedItem.organization = orgTxt.text;
+					}
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<mx:StringValidator id="strV"/>
+		<mx:PhoneNumberValidator id="phoneV" />
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="240" height="180" chromeColor="#EB871B" title="Contact Info" close="closeWindows(event)">
+		<s:Label x="40" y="18" text="Name:"/>
+		<s:TextInput x="80" y="12" id="nameTxt"/>
+		<s:TextInput x="80" y="42" id="telNumTxt"/>
+		<s:Label x="17" y="48" text="Telephone:"/>
+		<s:Label x="5" y="77" text="Organization:"/>
+		<s:Button x="44" y="116" label="Save" id="saveBtn" click="saveItem(event)"/>
+		<s:Button x="122" y="116" label="Close" click="closeWindows(event);" id="closeBtn"/>
+		<s:TextInput x="80" y="72" id="orgTxt"/>
+	</s:TitleWindow>
+</s:Application>

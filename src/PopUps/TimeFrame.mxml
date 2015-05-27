@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="300" height="170" preloaderChromeColor="#EB871B">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.controls.Text;
+			import mx.events.ValidationResultEvent;
+			import mx.managers.PopUpManager;
+			import mx.validators.*;
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function saveItem(event:Event):void{
+				var validData:Boolean = validateInput();
+				if (validData == true) {
+					if(saveBtn.label == "Add") {
+						if (phaseTxt.text != "" && valueTxt.text != "") {
+							var xm:XML = <timeFrame></timeFrame>;
+							var xmlList:XMLList = XMLList("<phase>"+phaseTxt.text+"</phase><value>" + valueTxt.text +" "+ typeCmbBox.selectedItem +"</value>");
+							xm.appendChild(xmlList);
+							try{parentDocument.timeFrameGrid.dataProvider.addItem(xm);}
+							catch (e:Error){Alert.show(e.message);}
+						}
+					}
+					else{
+						parentDocument.timeFrameGrid.selectedItem.phase = phaseTxt.text;
+						parentDocument.timeFrameGrid.selectedItem.value = valueTxt.text + " " + typeCmbBox.selectedItem;
+					}
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+				var invalid:int = 0;;
+				numV.minValue = 1;
+				numV.domain = "int";
+				numV.listener=phaseTxt;
+				vResult = numV.validate(phaseTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				numV2.minValue = 0.01;
+				numV2.domain = "real";
+				numV2.listener=valueTxt;
+				vResult = numV2.validate(valueTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				
+				if(invalid == 0) {return true;}
+				else {Alert.show("Data input error, please verify entries in red"); return false;}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:NumberValidator id="numV" required="true"/>
+		<mx:NumberValidator id="numV2" required="true"/>
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="300" height="170" title="Time Frame" chromeColor="#EB871B" close="closeWindows(event)">
+		<s:Label y="15" text="Phase:" x="5"/>
+		<s:TextInput y="10" width="235" x="53" id="phaseTxt" />
+		<s:Label y="50" text="Time to Complete:" x="5"/>
+		<s:TextInput x="107" y="45" width="60" id="valueTxt" />
+		<s:Label x="173" y="50" text="/"/>
+		<s:DropDownList x="181" y="44" width="107" id="typeCmbBox" selectedIndex="0">
+			<s:dataProvider>
+				<mx:ArrayList>
+					<fx:String>Days</fx:String>
+					<fx:String>Weeks</fx:String>
+					<fx:String>Months</fx:String>
+					<fx:String>Years</fx:String>
+				</mx:ArrayList>
+			</s:dataProvider>
+		</s:DropDownList>
+		<s:Button label="Save" x="74" y="108" click="saveItem(event)" id="saveBtn" enabled="true"/>
+		<s:Button label="Close" x="152" y="108" click="closeWindows(event)" id="closeBtn"/>	
+	</s:TitleWindow>
+</s:Application>

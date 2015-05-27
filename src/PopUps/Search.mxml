@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="530" height="370">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Text;
+			import mx.managers.PopUpManager;
+			import mx.controls.Alert;
+			
+			private function search():void{
+				var params:Object = new Object();
+				params["initId"] = initIdTxt.text;
+				if(teamList.selectedIndex >= 0) {params["team"] = teamList.selectedIndex;}
+				if(ownerList.selectedIndex >= 0) {params["owner"] = ownerList.selectedItem.username;}
+				params["user"] = parentDocument.usernameTxt.text;
+				parentDocument.useHttpService(params,"getAll");
+			}
+			
+			private function view():void{
+				if(searchWindow.title == "Search") {
+					var params:Object = new Object();
+					params["initId"] = resultGrid.selectedItem.id;
+					params["user"] = parentDocument.usernameTxt.text;
+					parentDocument.useHttpService(params,"view");
+				}
+				else {
+					addDepend();
+				}
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function addDepend():void{
+				var xm:XML = new XML();
+				xm = <dependency></dependency>
+				var xmlList:XMLList = XMLList("<id>"+resultGrid.selectedItem.id+"</id><description>"+resultGrid.selectedItem.description+"</description>");
+				xm.appendChild(xmlList);
+				try{
+					if(parentDocument.dependGrid.dataProvider != null) {parentDocument.dependGrid.dataProvider.addItem(xm);}
+					else {parentDocument.dependGrid.dataProvider = xm;}
+				}
+				catch (e:Error){Alert.show(e.message);}
+			}
+			
+			private function clear():void{
+				initIdTxt.text = "";
+				teamList.selectedItem = "";
+				ownerList.selectedItem = "";
+			}
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:TitleWindow width="530" height="370" title="Search" chromeColor="#EB871B" dropShadowVisible="false" x="0" y="0" close="closeWindows(event)" id="searchWindow">
+		<s:DropDownList x="102" y="40" width="127" id="teamList" labelField="name"></s:DropDownList>
+		<s:Label y="48" text="Team:" left="60"/>
+		<s:Label y="16" text="Initiative ID:" x="30"/>
+		<s:TextInput x="101" y="10" id="initIdTxt"/>
+		<s:DropDownList x="363" y="10" width="128" id="ownerList" labelField="name"></s:DropDownList>
+		<s:Label x="313" y="14" text="Owner:"/>
+		<s:Button x="186" y="81" label="Search" id="searchBtn" click="search()"/>
+		<mx:DataGrid bottom="30" right="10" left="10" height="196" id="resultGrid" doubleClickEnabled="true"  itemDoubleClick="view()" dataProvider="{parentDocument.searchXMLList}">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Initiative ID" dataField="id" width="70"/>
+				<mx:DataGridColumn headerText="Team" dataField="team"/>
+				<mx:DataGridColumn headerText="Description" dataField="description"/>
+				<mx:DataGridColumn headerText="Owner" dataField="owner"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<s:Label x="12" y="97" text="Results:"/>
+		<s:Button x="451" y="310" label="Close" click="closeWindows(event);" id="closeBtn"/>
+		<s:Button x="263" y="82" label="Clear" id="clearBtn" click="clear();"/>
+	</s:TitleWindow>
+</s:Application>

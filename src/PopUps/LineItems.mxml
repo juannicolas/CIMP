@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="280" height="360">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	
+	<fx:Script>
+		<![CDATA[
+			import flashx.textLayout.formats.Float;
+			
+			import mx.controls.Alert;
+			import mx.controls.Text;
+			import mx.events.ValidationResultEvent;
+			import mx.managers.PopUpManager;
+			import mx.validators.*;
+			
+			
+			private function closeWindows(event:Event):void{
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function calcTotal(event:Event):void{
+				var regEx:RegExp = /[,$]/g;
+				var total:Number = parseFloat(itemPriceTxt.text.replace(regEx,"")) * parseInt(qtyTxt.text);
+				priceTxt.text = cFormat.format(total.toString());
+			}
+			
+			private function saveItem(event:Event):void{
+				var validData:Boolean = validateInput();
+				if (validData == true) {
+					if(saveBtn.label == "Add") {
+						var xm:XML = new XML();
+						if(lineItemsWindow.title == "Expense Line Items"){xm = <expItem></expItem>}
+						else {xm = <capItem></capItem>}
+						var xmlList:XMLList = XMLList("<catId>"+catList.selectedItem.id+"</catId><category>"+catList.selectedItem.name+"</category><description>"+descTxt.text+"</description><qty>"+qtyTxt.text+"</qty><itemPrice>"+itemPriceTxt.text+"</itemPrice><totalPrice>"+priceTxt.text+"</totalPrice><fromDate>"+fromDate.text+"</fromDate><toDate>"+toDate.text+"</toDate>");
+						xm.appendChild(xmlList);
+						try{
+							if(parentDocument.expCap.itemsGrid.dataProvider != null) {parentDocument.expCap.itemsGrid.dataProvider.addItem(xm);}
+							else {parentDocument.expCap.itemsGrid.dataProvider = xm;}
+							parentDocument.expCap.calcTotal();
+						}
+						catch (e:Error){Alert.show(e.message);}
+					}
+					else{
+						parentDocument.expCap.itemsGrid.selectedItem.catId = catList.selectedItem.id.toString();
+						parentDocument.expCap.itemsGrid.selectedItem.category = catList.selectedItem.name.toString();
+						parentDocument.expCap.itemsGrid.selectedItem.qty = qtyTxt.text;
+						parentDocument.expCap.itemsGrid.selectedItem.itemPrice = itemPriceTxt.text;
+						parentDocument.expCap.itemsGrid.selectedItem.totalPrice = priceTxt.text;
+						parentDocument.expCap.itemsGrid.selectedItem.fromDate = fromDate.text;
+						parentDocument.expCap.itemsGrid.selectedItem.toDate = toDate.text;
+						parentDocument.expCap.itemsGrid.selectedItem.description = descTxt.text;
+						parentDocument.expCap.calcTotal();
+					}
+					PopUpManager.removePopUp(this);
+				}
+			}
+			
+			private function validateInput():Boolean{
+				var vResult:ValidationResultEvent;
+				var invalid:int = 0;;
+				numV.minValue = 1;
+				numV.domain = "int";
+				numV.listener=qtyTxt;
+				vResult = numV.validate(qtyTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				numV2.minValue = 0.01;
+				numV2.domain = "real";
+				numV2.listener=itemPriceTxt;
+				vResult = numV2.validate(itemPriceTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				strV.listener=descTxt;
+				vResult = strV.validate(descTxt.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				dateV.listener=fromDate;
+				vResult = dateV.validate(fromDate.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				dateV2.listener=toDate;
+				vResult = dateV2.validate(toDate.text);
+				if(vResult.type == "invalid") {invalid += 1;}
+				
+				if(invalid == 0) {return true;}
+				else {Alert.show("Data input error, please verify entries in red"); return false;}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<fx:XML id="itemCatXML" />
+		<mx:XMLListCollection id="itemCatXMLList" />
+		<mx:NumberValidator id="numV" required="true"/>
+		<mx:NumberValidator id="numV2" required="true"/>
+		<mx:StringValidator id="strV" required="true"/>
+		<mx:DateValidator id="dateV" required="true"/>
+		<mx:DateValidator id="dateV2" required="true"/>
+		<mx:CurrencyFormatter id="cFormat" precision="2" currencySymbol="$" useThousandsSeparator="true"/>
+	</fx:Declarations>
+	<s:TitleWindow x="0" y="0" width="280" height="360" chromeColor="#EB871B" title="Line Items" close="closeWindows(event)" id="lineItemsWindow">
+		<s:DropDownList y="10" x="82" id="catList" labelField="name" dataProvider="{itemCatXMLList}" selectedIndex="0"></s:DropDownList>
+		<s:Label y="15" text="Category:" x="27"/>
+		<s:Button label="Save" horizontalCenter="-74" bottom="10" id="saveBtn" click="saveItem(event)"/>
+		<s:Button label="Close" click="closeWindows(event);" bottom="10" horizontalCenter="72" id="closeBtn"/>
+		<mx:HRule width="263" horizontalCenter="0" bottom="40"/>
+		<s:TextArea y="187" width="249" height="90" horizontalCenter="-1" id="descTxt"/>
+		<s:Label x="16" y="173" text="Description:"/>
+		<s:TextInput x="81" y="39" width="113" id="qtyTxt" keyUp="calcTotal(event)"/>
+		<s:TextInput x="81" y="64" width="113" id="itemPriceTxt" keyUp="calcTotal(event)"/>
+		<s:Label x="57" y="44" text="Qty:"/>
+		<s:Label x="19" y="69" text="Item Price:"/>
+		<s:TextInput x="81" y="90" width="113" id="priceTxt" editable="false"/>
+		<s:Label x="16" y="94" text="Total Price:" id="totalPriceTxt"/>
+		<mx:DateField x="36" y="142" id="fromDate" yearNavigationEnabled="true"/>
+		<s:Label x="36" y="131" text="From Date:" />
+		<mx:DateField x="147" y="142" id="toDate" yearNavigationEnabled="true"/>
+		<s:Label x="147" y="131" text="To Date:"/>
+	</s:TitleWindow>
+</s:Application>
